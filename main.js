@@ -8,18 +8,11 @@ const express = require("express");
 const app = express();
 const port = 60206;
 
-const yargs = require("yargs");
-
-const argv = yargs
-  .options({
-    appID: { type: "string", demandOption: true, describe: "App ID" },
-  })
-  .help().argv;
-
-const appID = argv.appID;
+const appID = "1246950872206938123";
 
 require("dotenv").config();
 const API_KEY = process.env.API_KEY;
+const IMGBB_KEY = process.env.IMGBB_KEY;
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -28,7 +21,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
 
 app.listen(port);
 
@@ -55,7 +48,6 @@ app.get("/verify", (req, res) => {
   if (!checkAPIKey(req, res)) return;
   res.status(200).send({
     message: "OK",
-    imgbb_key: process.env.IMGBB_KEY,
   });
 });
 
@@ -103,20 +95,84 @@ RPC.on("ready", () => {
     }
   });
 
+  function formatDateTime(date) {
+    let optionsDate = { day: "numeric", month: "long", year: "numeric" };
+    let formattedDate = date.toLocaleDateString("en-GB", optionsDate);
+
+    let optionsTime = {
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+      hour12: true,
+    };
+    let formattedTime = date.toLocaleTimeString("en-GB", optionsTime);
+
+    return `${formattedDate}, ${formattedTime}`;
+  }
+
+  async function uploadImage(base64Image) {
+    const payload = new URLSearchParams({
+      key: IMGBB_KEY || "",
+      image: base64Image,
+      expiration: "43200", // 12 hours in seconds
+    });
+
+    try {
+      const response = await fetch("https://api.imgbb.com/1/upload", {
+        method: "POST",
+        body: payload,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const responseData = await response.json();
+      return responseData["data"]["url"];
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      throw error;
+    }
+  }
+
   const runRpc = async (data) => {
     try {
+      const image = await uploadImage(data.image);
+
+      if (!image) {
+        console.error("Image upload failed");
+        return {};
+      }
+
+      const createdDate = new Date();
+
+      data.description1 =
+        data.description1 !== "" ? data.description1 : undefined;
+      data.description2 =
+        data.description2 !== "" ? data.description2 : undefined;
+      data.image = image;
+      data.timestamp = data.timestamp ? createdDate : undefined;
+      data.created = formatDateTime(createdDate);
+
       var buttonList = [
         {
           label: "DisLife",
-          url: "https://github.com/pdt1806/",
+          url: "https://github.com/pdt1806/DisLife",
         },
       ];
-      if (data.button1) buttonList = [data.button1, ...buttonList];
+      if (data.viewFullImage)
+        buttonList = [
+          {
+            label: "View full image",
+            url: image,
+          },
+          ...buttonList,
+        ];
 
       await RPC.setActivity({
         details: data.description1,
-        state: data.description2 !== "" ? data.description2 : undefined,
-        startTimestamp: data.timestamp ? new Date() : undefined,
+        state: data.description2,
+        startTimestamp: data.timestamp,
         largeImageKey: data.image,
         largeImageText: "Powered by DisLife",
         instance: false,
@@ -151,7 +207,7 @@ app.get("/clear", (req, res) => {
 
 // ----------------------------------------------
 
-app.get("/check", (req, res) => {
+app.get("/fetch", (req, res) => {
   if (!checkAPIKey(req, res)) return;
 
   if (Object.keys(currentPost).length > 0) {
