@@ -1,4 +1,4 @@
-var currentPost = {};
+var currentPost = null;
 var currentPostTimeout;
 
 const DiscordRPC = require("discord-rpc");
@@ -17,8 +17,13 @@ const IMGBB_KEY = process.env.IMGBB_KEY;
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-  res.header("Access-Control-Allow-Headers", "Content-Type");
-  next();
+  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+  if (req.method === "OPTIONS") {
+    res.sendStatus(200);
+  } else {
+    next();
+  }
 });
 
 app.use(express.json({ limit: "50mb" }));
@@ -35,10 +40,11 @@ app.get("/", (req, res) => {
 
 function checkAPIKey(req, res) {
   const authorizationHeader = req.headers.authorization;
-  if (authorizationHeader !== API_KEY)
+  if (authorizationHeader !== API_KEY) {
     res.status(401).send({
       message: "Unauthorized",
     });
+  }
   return authorizationHeader === API_KEY;
 }
 
@@ -81,7 +87,7 @@ RPC.on("ready", () => {
         });
 
         currentPostTimeout = setTimeout(() => {
-          currentPost = {};
+          currentPost = null;
           RPC.clearActivity();
         }, 1000 * 60 * 60 * 12); // 12 hours
       } else {
@@ -142,7 +148,7 @@ RPC.on("ready", () => {
 
       if (!image) {
         console.error("Image upload failed");
-        return {};
+        return null;
       }
 
       const createdDate = new Date();
@@ -182,7 +188,7 @@ RPC.on("ready", () => {
       return data;
     } catch (e) {
       console.error(new Date().toISOString() + " | " + e.message);
-      return {};
+      return null;
     }
   };
 });
@@ -194,7 +200,7 @@ app.get("/clear", (req, res) => {
 
   try {
     RPC.clearActivity();
-    currentPost = {};
+    currentPost = null;
     currentPostTimeout = undefined;
     res.status(200).send({
       message: "OK",
@@ -211,12 +217,12 @@ app.get("/clear", (req, res) => {
 app.get("/fetch", (req, res) => {
   if (!checkAPIKey(req, res)) return;
 
-  if (Object.keys(currentPost).length > 0) {
+  try {
     res.status(200).send({
       message: "OK",
       data: currentPost,
     });
-  } else {
+  } catch (e) {
     res.status(400).send({
       message: "Not OK",
     });
