@@ -82,6 +82,7 @@ RPC.on("ready", () => {
 
         currentPostTimeout = setTimeout(() => {
           currentPost = {};
+          RPC.clearActivity();
         }, 1000 * 60 * 60 * 12); // 12 hours
       } else {
         res.status(400).send({
