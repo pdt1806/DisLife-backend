@@ -174,7 +174,7 @@ RPC.on("ready", () => {
         state: data.description2,
         startTimestamp: data.timestamp,
         largeImageKey: data.image,
-        largeImageText: "Powered by DisLife",
+        largeImageText: "Powered by ImgBB",
         instance: false,
         buttons: buttonList,
       });
