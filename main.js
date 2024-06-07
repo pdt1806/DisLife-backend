@@ -103,18 +103,21 @@ RPC.on("ready", () => {
   });
 
   function formatDateTime(date) {
-    let optionsDate = { day: "numeric", month: "long", year: "numeric" };
-    let formattedDate = date.toLocaleDateString("en-GB", optionsDate);
+    const formattedDate = date.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
 
-    let optionsTime = {
-      hour: "numeric",
-      minute: "numeric",
-      second: "numeric",
-      hour12: true,
-    };
-    let formattedTime = date.toLocaleTimeString("en-GB", optionsTime);
+    let hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, "0");
+    const seconds = date.getSeconds().toString().padStart(2, "0");
+    const ampm = hours >= 12 ? "pm" : "am";
 
-    return `${formattedDate}, ${formattedTime}`;
+    hours = hours % 12 || 12;
+    const formattedHours = hours.toString().padStart(2, "0");
+
+    return `${formattedDate}, ${formattedHours}:${minutes}:${seconds} ${ampm}`;
   }
 
   async function uploadImage(base64Image) {
