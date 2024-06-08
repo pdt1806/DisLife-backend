@@ -1,18 +1,29 @@
 var currentPost = null;
 var currentPostTimeout;
 
+// ----------------------------------------------
+// Adjustable variables
+
+const port = 60206;
+const requestSizeLimit = "50mb";
+
+// ----------------------------------------------
+// Don't change these variables
+
+const appID = "1246950872206938123"; // DisLife App ID
+
+require("dotenv").config();
+const API_KEY = process.env.API_KEY;
+const IMGBB_KEY = process.env.IMGBB_KEY;
+
+// ----------------------------------------------
+// Importing and initializing required modules
+
 const DiscordRPC = require("discord-rpc");
 const RPC = new DiscordRPC.Client({ transport: "ipc" });
 
 const express = require("express");
 const app = express();
-const port = 60206;
-
-const appID = "1246950872206938123";
-
-require("dotenv").config();
-const API_KEY = process.env.API_KEY;
-const IMGBB_KEY = process.env.IMGBB_KEY;
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -26,7 +37,7 @@ app.use((req, res, next) => {
   }
 });
 
-app.use(express.json({ limit: "50mb" }));
+app.use(express.json({ limit: requestSizeLimit }));
 
 app.listen(port);
 
@@ -37,6 +48,7 @@ app.get("/", (req, res) => {
 });
 
 // ----------------------------------------------
+// Authorizing API Key
 
 function checkAPIKey(req, res) {
   const authorizationHeader = req.headers.authorization;
@@ -49,6 +61,7 @@ function checkAPIKey(req, res) {
 }
 
 // ----------------------------------------------
+// Verify API Endpoint / Key
 
 app.get("/verify", (req, res) => {
   if (!checkAPIKey(req, res)) return;
@@ -58,6 +71,7 @@ app.get("/verify", (req, res) => {
 });
 
 // ----------------------------------------------
+// Discord RPC Connection
 
 async function login() {
   try {
@@ -72,6 +86,7 @@ async function login() {
 login();
 
 // ----------------------------------------------
+// Discord RPC Events + Post Endpoint
 
 RPC.on("ready", () => {
   app.post("/post", async (req, res) => {
@@ -89,7 +104,7 @@ RPC.on("ready", () => {
         currentPostTimeout = setTimeout(() => {
           currentPost = null;
           RPC.clearActivity();
-        }, 1000 * 60 * 60 * 12); // 12 hours
+        }, 1000 * currentPost.expirationTime);
       } else {
         res.status(400).send({
           message: "Not OK",
@@ -120,11 +135,11 @@ RPC.on("ready", () => {
     return `${formattedDate}, ${formattedHours}:${minutes}:${seconds} ${ampm}`;
   }
 
-  async function uploadImage(base64Image) {
+  async function uploadImage(base64Image, expirationTime = 12 * 60 * 60) {
     const payload = new URLSearchParams({
       key: IMGBB_KEY || "",
       image: base64Image,
-      expiration: "43200", // 12 hours in seconds
+      expiration: expirationTime.toString(),
     });
 
     try {
@@ -147,7 +162,7 @@ RPC.on("ready", () => {
 
   const runRpc = async (data) => {
     try {
-      const image = await uploadImage(data.image);
+      const image = await uploadImage(data.image, data.expirationTime);
 
       if (!image) {
         console.error("Image upload failed");
@@ -197,6 +212,7 @@ RPC.on("ready", () => {
 });
 
 // ----------------------------------------------
+// Clear Discord RPC Activity
 
 app.get("/clear", (req, res) => {
   if (!checkAPIKey(req, res)) return;
@@ -216,6 +232,7 @@ app.get("/clear", (req, res) => {
 });
 
 // ----------------------------------------------
+// Fetch Discord RPC Activity
 
 app.get("/fetch", (req, res) => {
   if (!checkAPIKey(req, res)) return;

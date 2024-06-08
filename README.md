@@ -34,7 +34,6 @@ Where you can make changes for personalization (default value):
 
 - Port number (60206)
 - Request size limit (50MB)
-- Auto delete post time (12 hours)
 
 Technically, you have the right to change whatever you want in the code, but I hope you keep any credits to DisLife and ImgBB.
 
