@@ -1,5 +1,15 @@
-var currentPost = null;
-var currentPostTimeout;
+import DiscordRPC from "discord-rpc";
+import dotenv from "dotenv";
+import express from "express";
+import { cropBase64ToSquare, formatDateTime } from "./utils.js";
+
+// ----------------------------------------------
+// Importing required modules
+
+const RPC = new DiscordRPC.Client({ transport: "ipc" });
+const app = express();
+
+dotenv.config();
 
 // ----------------------------------------------
 // Adjustable variables
@@ -10,20 +20,17 @@ const requestSizeLimit = "50mb";
 // ----------------------------------------------
 // Don't change these variables
 
-const appID = "1246950872206938123"; // DisLife App ID
+var currentPost = null;
+var currentPostTimeout;
 
-require("dotenv").config();
-const API_KEY = process.env.API_KEY;
+const appID = "1246950872206938123";
+
 const IMGBB_KEY = process.env.IMGBB_KEY;
 
+const PASSWORD = process.env.PASSWORD;
+
 // ----------------------------------------------
-// Importing and initializing required modules
-
-const DiscordRPC = require("discord-rpc");
-const RPC = new DiscordRPC.Client({ transport: "ipc" });
-
-const express = require("express");
-const app = express();
+// Initializing
 
 app.use((req, res, next) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -48,29 +55,6 @@ app.get("/", (req, res) => {
 });
 
 // ----------------------------------------------
-// Authorizing API Key
-
-function checkAPIKey(req, res) {
-  const authorizationHeader = req.headers.authorization;
-  if (authorizationHeader !== API_KEY) {
-    res.status(401).send({
-      message: "Unauthorized",
-    });
-  }
-  return authorizationHeader === API_KEY;
-}
-
-// ----------------------------------------------
-// Verify API Endpoint / Key
-
-app.get("/verify", (req, res) => {
-  if (!checkAPIKey(req, res)) return;
-  res.status(200).send({
-    message: "OK",
-  });
-});
-
-// ----------------------------------------------
 // Discord RPC Connection
 
 async function login() {
@@ -86,11 +70,49 @@ async function login() {
 login();
 
 // ----------------------------------------------
+// Authorizing password
+
+function checkPassword(req, res) {
+  try {
+    const password = req.body.password;
+
+    if (!password) {
+      res.status(400).send({
+        message: "Bad Request here",
+      });
+      return false;
+    }
+
+    if (!(password === PASSWORD)) {
+      res.status(401).send({
+        message: "Unauthorized",
+      });
+    }
+    return password === PASSWORD;
+  } catch (error) {
+    res.status(400).send({
+      message: "Bad Request",
+    });
+    return false;
+  }
+}
+
+// ----------------------------------------------
+// Verify API Endpoint & Password
+
+app.post("/verify", async (req, res) => {
+  if (!checkPassword(req, res)) return;
+  res.status(200).send({
+    message: "API Endpoint saved successfully!",
+  });
+});
+
+// ----------------------------------------------
 // Discord RPC Events + Post Endpoint
 
 RPC.on("ready", () => {
   app.post("/post", async (req, res) => {
-    if (!checkAPIKey(req, res)) return;
+    if (!checkPassword(req, res)) return;
 
     try {
       currentPost = await runRpc(req.body);
@@ -117,28 +139,12 @@ RPC.on("ready", () => {
     }
   });
 
-  function formatDateTime(date) {
-    const formattedDate = date.toLocaleDateString("en-GB", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-
-    let hours = date.getHours();
-    const minutes = date.getMinutes().toString().padStart(2, "0");
-    const seconds = date.getSeconds().toString().padStart(2, "0");
-    const ampm = hours >= 12 ? "pm" : "am";
-
-    hours = hours % 12 || 12;
-    const formattedHours = hours.toString().padStart(2, "0");
-
-    return `${formattedDate}, ${formattedHours}:${minutes}:${seconds} ${ampm}`;
-  }
-
   async function uploadImage(base64Image, expirationTime = 12 * 60 * 60) {
+    const croppedBase64 = await cropBase64ToSquare(base64Image);
+
     const payload = new URLSearchParams({
-      key: IMGBB_KEY || "",
-      image: base64Image,
+      key: IMGBB_KEY,
+      image: croppedBase64,
       expiration: expirationTime.toString(),
     });
 
@@ -214,8 +220,8 @@ RPC.on("ready", () => {
 // ----------------------------------------------
 // Clear Discord RPC Activity
 
-app.get("/clear", (req, res) => {
-  if (!checkAPIKey(req, res)) return;
+app.post("/clear", async (req, res) => {
+  if (!checkPassword(req, res)) return;
 
   try {
     RPC.clearActivity();
@@ -234,8 +240,8 @@ app.get("/clear", (req, res) => {
 // ----------------------------------------------
 // Fetch Discord RPC Activity
 
-app.get("/fetch", (req, res) => {
-  if (!checkAPIKey(req, res)) return;
+app.post("/fetch", async (req, res) => {
+  if (!checkPassword(req, res)) return;
 
   try {
     res.status(200).send({

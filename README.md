@@ -15,7 +15,7 @@ Follow the instructions below to set up the back-end server for [DisLife](https:
 
 ### 📝 2. Create a .env file based on the example file
 
-- `API_KEY` is a secret key used for authorization when the DisLife app connects to this server. You can set it as anything you want, and you can change it anytime.
+- `PASSWORD` is used for authorization when the DisLife app connects to this server. You can set it as anything you want, and you can change it anytime.
 - To get the API key for ImgBB, which will then be put into `IMGBB_KEY`, do the following:
 
 1. Go to [ImgBB](https://imgbb.com/) and create an account.
