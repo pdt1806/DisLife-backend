@@ -24,6 +24,9 @@ Follow the instructions below to set up the back-end server for [DisLife](https:
 
 ### 💻 3. `npm install`
 
+> [!WARNING]
+> The latest version of the `sharp` dependency needs SSE4.2 CPU on Linux x64 (older CPUs incompatible). Use `npm install sharp@0.27.2` for last known compatible version (see [Stack Overflow: NodeJS Illegal instruction (core dumped) error after using sharp library](https://stackoverflow.com/questions/67580821/nodejs-illegal-instruction-core-dumped-error-after-using-sharp-library)).
+
 ### 🚀 4. Run the server with `node main.js` or use pm2
 
 By default, the server runs on `http://localhost:60206`.
