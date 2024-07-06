@@ -209,6 +209,8 @@ RPC.on("ready", () => {
         instance: false,
         buttons: buttonList,
       });
+
+      delete data.password;
       return data;
     } catch (e) {
       console.error(new Date().toISOString() + " | " + e.message);
