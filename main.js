@@ -57,13 +57,20 @@ app.get("/", (req, res) => {
 // ----------------------------------------------
 // Discord RPC Connection
 
-async function login() {
-  try {
-    await RPC.login({ clientId: appID });
-    console.clear();
-    console.log(`DisLife Server listening on http://localhost:${port}`);
-  } catch (e) {
-    console.error(e.message);
+async function login(retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      await RPC.login({ clientId: appID });
+      console.clear();
+      console.log(`DisLife Server listening on http://localhost:${port}`);
+      return;
+    } catch (e) {
+      console.error(`Attempt ${attempt} failed: ${e.message}`);
+      if (attempt === retries) {
+        process.exit(1);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
   }
 }
 
